@@ -3,39 +3,37 @@
 
 from multiprocessing import Pool
 
+
 CHUNKSIZE = 1024 * 4
 
 
 def _obf(args) -> bytearray:
     data_chunk, key, decrypt, iterations = args
-    len_data = len(data_chunk)
-    len_key = len(key)
+    l_data = len(data_chunk)
+    l_key = len(key)
     for _ in range(iterations):
         # shift (encrypt)
         if not decrypt:
-            for i in range(len_data):
-                n = key[i % len_key]
+            for i in range(l_data):
+                n = key[i % l_key]
                 data_chunk[i] = (data_chunk[i] + n) % 256
         # transpose
         # list of tuples that stores transposition data (from, to):
-        swap_indices = [] # (this is extremely memory inefficient lol)
+        tp = [] # (this is extremely memory inefficient for large chunksizes)
         k = 0
-        for i in range(len_data):
-            k += i + key[i % len_key] # we add to k
-            j = k % len_data          # and use it to make cryptanalysis harder (I think?)
-            swap_indices.append((i, j)) # store transposition data
+        for i in range(l_data):
+            k += i + key[i % l_key]     # we add to k
+            j = k % l_data              # and use k here (more obfuscation)
+            tp.append((i, j)) # store transposition data
         if decrypt:
-            swap_indices.reverse()
-        for a, b in swap_indices:
+            tp.reverse()
+        for a, b in tp:
             # swap values
-            a_ = data_chunk[a]
-            b_ = data_chunk[b]
-            data_chunk[a] = b_
-            data_chunk[b] = a_
+            data_chunk[a], data_chunk[b] = data_chunk[b], data_chunk[a]
         # unshift (decrypt)
         if decrypt:
-            for i in range(len_data):
-                n = key[i % len_key]
+            for i in range(l_data):
+                n = key[i % l_key]
                 b = data_chunk[i] - n
                 while b < 0:
                     b = 256 + b
@@ -51,21 +49,20 @@ def obf(data: bytes, key: bytes, decrypt: bool = False, iterations: int = 8, pro
     assert type(processes) == int
     data = bytearray(data)
     key = bytearray(key)
-    len_data_complete = len(data)
-
+    # split into chunks
     chunks = []
     p = 0
-    while p < len_data_complete:
+    while p < len(data):
         p_new = p + CHUNKSIZE
         chunk = data[p:p_new]
         chunks.append((chunk, key, decrypt, iterations))
         p = p_new
-
+    # don't need that anymore
     del data
-
+    # create mp pool and process
     pool = Pool(processes=4)
     results = pool.map(_obf, chunks)
-
+    # don't need that anymore
     del chunks
-
+    # done
     return bytes(b''.join(results))

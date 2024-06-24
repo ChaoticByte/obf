@@ -1,7 +1,7 @@
 # Copyright (c) 2024 Julian Müller (ChaoticByte)
 # License: MIT
 
-def obf(data: bytes, key: bytes, decrypt: bool = False, iterations: int = 64) -> bytes:
+def obf(data: bytes, key: bytes, decrypt: bool = False, iterations: int = 8) -> bytes:
     assert type(data) == bytes
     assert type(key) == bytes
     assert type(iterations) == int
@@ -10,14 +10,15 @@ def obf(data: bytes, key: bytes, decrypt: bool = False, iterations: int = 64) ->
     key = bytearray(key)
     len_data = len(data)
     len_key = len(key)
-    def a(d):
+    for _ in range(iterations):
         # shift (encrypt)
         if not decrypt:
             for i in range(len_data):
                 n = key[i % len_key]
-                d[i] = (d[i] + n) % 256
+                data[i] = (data[i] + n) % 256
         # transpose
-        swap_indices = [] # list of tuples that stores transposition data (from, to)
+        # list of tuples that stores transposition data (from, to):
+        swap_indices = [] # (this is extremely memory inefficient lol)
         k = 0
         for i in range(len_data):
             k += i + key[i % len_key] # we add to k
@@ -27,19 +28,16 @@ def obf(data: bytes, key: bytes, decrypt: bool = False, iterations: int = 64) ->
             swap_indices.reverse()
         for a, b in swap_indices:
             # swap values
-            a_ = d[a]
-            b_ = d[b]
-            d[a] = b_
-            d[b] = a_
+            a_ = data[a]
+            b_ = data[b]
+            data[a] = b_
+            data[b] = a_
         # unshift (decrypt)
         if decrypt:
             for i in range(len_data):
                 n = key[i % len_key]
-                b = d[i] - n
+                b = data[i] - n
                 while b < 0:
                     b = 256 + b
-                d[i] = b
-        return d
-    for i in range(iterations):
-        data = a(data)
+                data[i] = b
     return bytes(data)

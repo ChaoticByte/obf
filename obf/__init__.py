@@ -60,7 +60,7 @@ def obf(data: bytes, key: bytes, decrypt: bool = False, iterations: int = 8, pro
     # don't need that anymore
     del data
     # create mp pool and process
-    pool = Pool(processes=4)
+    pool = Pool(processes=processes)
     results = pool.map(_obf, chunks)
     # don't need that anymore
     del chunks
